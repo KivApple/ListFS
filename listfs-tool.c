@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <time.h>
 #define FUSE_USE_VERSION 30
 #include <fuse.h>
@@ -196,15 +197,6 @@ int listfs_create(char *file_name, uint64_t size, char *boot_file_name) {
 	fs_header->uid = (time(NULL) << 16) | (rand() & 0xFFFF);
 	fwrite(fs_header, fs_header->block_size, 1, fs_device);
 	fs_map = calloc(fs_header->block_size, fs_header->map_size);
-	/* {
-		uint64_t reserved_blocks = fs_header->map_size + 1; // bitmap + fs header
-		memset(fs_map, 0xFF, reserved_blocks / 8);
-		uint8_t j = reserved_blocks % 8;
-		uint8_t i;
-		for (i = 0; i < j; i++) {
-			fs_map[reserved_blocks / 8] |= 1 << i;	
-		}
-	} */
 	listfs_get_blocks(0, fs_header->map_size + 1); // bitmao + fs header
 	fwrite(fs_map, fs_header->block_size, fs_header->map_size, fs_device);
 	fseek(fs_device, fs_header->block_size * fs_header->size - 1, SEEK_SET);
@@ -217,6 +209,8 @@ int listfs_create(char *file_name, uint64_t size, char *boot_file_name) {
 }
 
 /* fuse */
+
+static int listfs_truncate(const char *path, off_t size);
 
 static int listfs_getattr(const char *path, struct stat *stbuf) {
 	log_message("[%s] path='%s'\n", __func__, path);
@@ -267,37 +261,119 @@ static int listfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler, o
 	}
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
-	while (file_header_block != -1) {
+	int limit = 100;
+	while ((file_header_block != -1) && (limit)) {
 		listfs_read_block(file_header_block, file_header);
 		filler(buf, file_header->name, NULL, 0);
 		file_header_block = file_header->next;
+		limit--;
 	}
 	free(file_header);
 	return 0;
 }
 
+int listfs_create_node(const char *path, uint64_t attrs) {
+	log_message("[%s] path='%s'\n", __func__, path);
+	char *_path = strdup(path);
+	char *parent_name = strdup(dirname(_path));
+	free(_path);
+	const char *file_name = path + strlen(parent_name);
+	if (file_name[0] == '/') file_name++;
+	log_message("[%s] parent='%s', file_name='%s'\n", __func__, parent_name, file_name);
+	listfs_file_header *parent_header = malloc(fs_header->block_size);
+	uint64_t parent = -1;
+	if (strcmp(parent_name, "/") != 0) {
+		parent = listfs_search_file(fs_header->first_file, parent_name + 1, parent_header);
+		if (parent == -1) {
+			log_message("[%s] Parent not found!\n", __func__);
+			free(parent_name);
+			free(parent_header);
+			return -ENOENT;
+		}
+	}
+	listfs_file_header *file_header = calloc(fs_header->block_size, 1);
+	strncpy(file_header->name, file_name, LISTFS_MAX_FILE_NAME);
+	file_header->prev = -1;
+	file_header->data = -1;
+	file_header->parent = parent;
+	file_header->attrs = attrs;
+	uint64_t file_header_block = listfs_alloc_blocks(1);
+	if (parent == -1) {
+		file_header->next = fs_header->first_file;
+		fs_header->first_file = file_header_block;
+		listfs_write_block(0, fs_header);
+	} else {
+		file_header->next = parent_header->data;
+		parent_header->data = file_header_block;
+		listfs_write_block(parent, parent_header);
+	}
+	listfs_write_block(file_header_block, file_header);
+	if (file_header->next != -1) {
+		uint64_t next = file_header->next;
+		listfs_read_block(next, file_header);
+		file_header->prev = file_header_block;
+		listfs_write_block(next, file_header);
+	}
+	free(file_header);
+	free(parent_name);
+	free(parent_header);
+	return 0;
+}
+
 static int listfs_mknod(const char *path, mode_t mode, dev_t rdev) {
 	log_message("[%s] path='%s'\n", __func__, path);
-	// TODO
-	return -EACCES;
+	return listfs_create_node(path, 0);
 }
 
 static int listfs_mkdir(const char *path, mode_t mode) {
 	log_message("[%s] path='%s'\n", __func__, path);
-	// TODO
-	return -EACCES;
+	return listfs_create_node(path, LISTFS_FILE_ATTR_DIR);
+}
+
+int listfs_remove_node(const char *path) {
+	listfs_file_header *file_header = malloc(fs_header->block_size);
+	uint64_t file_header_block = listfs_search_file(fs_header->first_file, path + 1, file_header);
+	if (file_header_block == -1) {
+		free(file_header);
+		return -ENOENT;
+	}
+	if (file_header->data != -1) {
+		free(file_header);
+		return -EACCES;
+	}
+	listfs_file_header *tmp_header = malloc(fs_header->block_size);
+	if (file_header->next != -1) {
+		listfs_read_block(file_header->next, tmp_header);
+		tmp_header->prev = file_header->prev;
+		listfs_write_block(file_header->next, tmp_header);
+	}
+	if (file_header->prev != -1) {
+		listfs_read_block(file_header->prev, tmp_header);
+		tmp_header->next = file_header->next;
+		listfs_write_block(file_header->prev, tmp_header);
+	} else if (file_header->parent != -1) {
+		listfs_read_block(file_header->parent, tmp_header);
+		tmp_header->data = file_header->next;
+		listfs_write_block(file_header->parent, tmp_header);
+	} else {
+		fs_header->first_file = file_header->next;
+		listfs_write_block(0, fs_header);
+	}
+	listfs_free_blocks(file_header_block, 1);
+	free(tmp_header);
+	free(file_header);
+	return 0;
 }
 
 static int listfs_unlink(const char *path) {
 	log_message("[%s] path='%s'\n", __func__, path);
-	// TODO
-	return -EACCES;
+	listfs_truncate(path, 0);
+	return listfs_remove_node(path);
 }
 
 static int listfs_rmdir(const char *path) {
 	log_message("[%s] path='%s'\n", __func__, path);
-	// TODO
-	return -EACCES;
+	return listfs_remove_node(path);
 }
 
 static int listfs_rename(const char *from, const char *to) {
@@ -326,7 +402,6 @@ static int listfs_open(const char *path, struct fuse_file_info *fi) {
 
 static int listfs_release(const char *path, struct fuse_file_info *fi) {
 	log_message("[%s] path='%s'\n", __func__, path);
-	//free((void*)fi->fh);
 }
 
 static int listfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
