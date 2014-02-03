@@ -10,7 +10,7 @@ struct _ListFS {
 	void (*read_block_func)(ListFS*, uint64_t, void*);
 	void (*write_block_func)(ListFS*, uint64_t, void*);
 	void (*log_func)(ListFS*, char *fmt, va_list args);
-	ListFS_Header header;
+	ListFS_Header *header;
 	uint8_t *map;
 	uint64_t last_allocated_block;
 };
@@ -29,7 +29,7 @@ typedef struct {
 
 ListFS *listfs_init(void (*read_block_func)(ListFS*, uint64_t, void*),
 	void (*write_block_func)(ListFS*, uint64_t, void*), void (*log_func)(ListFS*, char*, va_list));
-void listfs_create(ListFS *this, uint64_t size, uint16_t block_size);
+void listfs_create(ListFS *this, uint64_t size, uint16_t block_size, void *bootloader, size_t bootloader_size);
 bool listfs_open(ListFS *this);
 void listfs_close(ListFS *this);
 

@@ -40,7 +40,7 @@ static int _getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_nlink = 2;
 		return 0;
 	}
-	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header.root_dir);
+	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
 	if (node == -1) {
 		return -ENOENT;
 	}
@@ -73,9 +73,9 @@ bool readdir_callback(ListFS *fs, uint64_t node, ListFS_NodeHeader *header, void
 static int _readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
 	uint64_t node;
 	if (strcmp(path, "/") == 0) {
-		node = fs->header.root_dir;
+		node = fs->header->root_dir;
 	} else {
-		node = listfs_search_node(fs, (char*)path + 1, fs->header.root_dir);
+		node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
 		if (node == -1) {
 			return -ENOENT;
 		}
@@ -105,7 +105,7 @@ int _make_node(const char *path, uint32_t flags) {
 	if (strcmp(parent_name, "/") == 0) {
 		parent = -1;
 	} else {
-		parent = listfs_search_node(fs, parent_name + 1, fs->header.root_dir);
+		parent = listfs_search_node(fs, parent_name + 1, fs->header->root_dir);
 		if (parent == -1) {
 			free(parent_name);
 			return -ENOENT;
@@ -124,7 +124,7 @@ static int _mkdir(const char *path, mode_t mode) {
 }
 
 static int _unlink(const char *path) {
-	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header.root_dir);
+	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
 	if (node == -1) return -ENOENT;
 	ListFS_OpennedFile *file = listfs_open_file(fs, node);
 	if (file) {
@@ -140,7 +140,7 @@ static int _unlink(const char *path) {
 }
 
 static int _rmdir(const char *path) {
-	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header.root_dir);
+	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
 	if (node == -1) return -ENOENT;
 	if (listfs_delete_node(fs, node)) {
 		return 0;
@@ -150,7 +150,7 @@ static int _rmdir(const char *path) {
 }
 
 static int _rename(const char *from, const char *to) {
-	uint64_t node = listfs_search_node(fs, (char*)from + 1, fs->header.root_dir);
+	uint64_t node = listfs_search_node(fs, (char*)from + 1, fs->header->root_dir);
 	if (node == -1) return -ENOENT;
 	char *_path = strdup(to);
 	char *parent_name = strdup(dirname(_path));
@@ -161,7 +161,7 @@ static int _rename(const char *from, const char *to) {
 	if (strcmp(parent_name, "/") == 0) {
 		parent = -1;
 	} else {
-		parent = listfs_search_node(fs, parent_name + 1, fs->header.root_dir);
+		parent = listfs_search_node(fs, parent_name + 1, fs->header->root_dir);
 		if (parent == -1) {
 			free(parent_name);
 			return -ENOENT;
@@ -174,7 +174,7 @@ static int _rename(const char *from, const char *to) {
 }
 
 static int _open(const char *path, struct fuse_file_info *fi) {
-	ListFS_OpennedFile *file = listfs_open_file(fs, listfs_search_node(fs, (char*)path + 1, fs->header.root_dir));
+	ListFS_OpennedFile *file = listfs_open_file(fs, listfs_search_node(fs, (char*)path + 1, fs->header->root_dir));
 	if (!file) {
 		return -ENOENT;
 	}
@@ -199,7 +199,7 @@ static int _write(const char *path, const char *buf, size_t size, off_t offset, 
 }
 
 static int _truncate(const char *path, off_t size) {
-	ListFS_OpennedFile *file = listfs_open_file(fs, listfs_search_node(fs, (char*)path + 1, fs->header.root_dir));
+	ListFS_OpennedFile *file = listfs_open_file(fs, listfs_search_node(fs, (char*)path + 1, fs->header->root_dir));
 	if (!file) {
 		return -ENOENT;
 	}
@@ -232,20 +232,20 @@ static struct fuse_operations listfs_operations = {
 void display_usage() {
 	printf("ListFS Tool. Version %i.%i\n", LISTFS_VERSION_MAJOR, LISTFS_VERSION_MINOR);
 	printf("Usage:\n");
-	printf("\tlistfs-tool create <file or device name> <file system size in blocks> <block size>\n");
-	printf("\tlistfs-tool dump <file or device name>\n");
+	printf("\tlistfs-tool create <file or device name> <file system size in blocks>\n\t\t<block size> [bootloader file name]\n");
+	//printf("\tlistfs-tool dump <file or device name>\n");
 	printf("\tlistfs-tool mount <file or device name> <mount point> [fuse options]\n");
 	printf("\n");
 }
 
 void read_block_func(ListFS *fs, uint64_t index, void *buffer) {
-	fseek(device_file, index * fs->header.block_size + fs->header.base, SEEK_SET);
-	fread(buffer, fs->header.block_size, 1, device_file);
+	fseek(device_file, index * fs->header->block_size + fs->header->base, SEEK_SET);
+	fread(buffer, fs->header->block_size, 1, device_file);
 }
 
 void write_block_func(ListFS *fs, uint64_t index, void *buffer) {
-	fseek(device_file, index * fs->header.block_size + fs->header.base, SEEK_SET);
-	fwrite(buffer, fs->header.block_size, 1, device_file);
+	fseek(device_file, index * fs->header->block_size + fs->header->base, SEEK_SET);
+	fwrite(buffer, fs->header->block_size, 1, device_file);
 }
 
 void log_func(ListFS *fs, char *fmt, va_list ap) {
@@ -278,12 +278,29 @@ int main(int argc, char *argv[]) {
 			printf("Block size must be greater than %u bytes!\n", LISTFS_MIN_BLOCK_SIZE);
 			return -1;
 		}
+		uint8_t *bootloader = NULL;
+		size_t bootloader_size;
+		if (argc >= 6) {
+			char *bootloader_file_name = argv[5];
+			FILE *bootloader_file = fopen(bootloader_file_name, "r");
+			if (!bootloader_file) {
+				printf("Failed to open '%s'!\n", bootloader_file_name);
+				return -2;
+			}
+			while (!feof(bootloader_file)) {
+				bootloader_size += LISTFS_MIN_BLOCK_SIZE;
+				bootloader = realloc(bootloader, bootloader_size);
+				fread(bootloader, LISTFS_MIN_BLOCK_SIZE, 1, bootloader_file);
+			}
+			fclose(bootloader_file);
+		}
 		device_file = fopen(file_name, "w+");
-		listfs_create(fs, atol(argv[3]), atoi(argv[4]));
+		listfs_create(fs, fs_size, fs_block_size, bootloader, bootloader_size);
 		ListFS_OpennedFile *file = listfs_open_file(fs, listfs_create_node(fs, "README", 0, -1));
 		listfs_file_write(file, readme_text, strlen(readme_text));
 		listfs_file_close(file);
 		listfs_close(fs);
+		free(bootloader);
 		return 0;
 	} else if (strcmp(action, "mount") == 0) {
 		if (argc < 4) {
