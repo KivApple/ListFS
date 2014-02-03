@@ -33,6 +33,9 @@ typedef struct {
 	uint32_t magic;
 	uint32_t flags;
 	uint64_t size;
+	uint64_t create_time;
+	uint64_t modify_time;
+	uint64_t access_time;
 } ListFS_NodeHeader;
 
 #endif

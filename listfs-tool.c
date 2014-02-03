@@ -51,6 +51,9 @@ static int _getattr(const char *path, struct stat *stbuf) {
 	} else {
 		stbuf->st_mode = S_IFREG | 0755;
 	}
+	stbuf->st_ctime = header->create_time;
+	stbuf->st_mtime = header->modify_time;
+	stbuf->st_atime = header->access_time;
 	stbuf->st_size = header->size;
 	free(header);
 	return 0;

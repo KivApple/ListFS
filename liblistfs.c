@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
+#include <time.h>
 #include "listfs.h"
 #include "liblistfs.h"
 
@@ -243,6 +244,7 @@ uint64_t listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, uint64_
 	strncpy(header->name, name, sizeof(header->name));
 	header->flags = flags;
 	header->data = -1;
+	header->create_time = time(NULL);
 	listfs_write_block(this, header_block, header);
 	listfs_insert_node(this, header_block, parent);
 	return header_block;
@@ -567,6 +569,7 @@ void listfs_file_truncate(ListFS_OpennedFile *this) {
 	}
 	free(list);
 	this->node_header->size = this->cur_global_offset;
+	this->node_header->modify_time = time(NULL);
 	listfs_write_block(this->fs, this->node, this->node_header);
 }
 
@@ -597,6 +600,7 @@ size_t listfs_file_write(ListFS_OpennedFile *this, void *buffer, size_t length) 
 	free (tmp);
 	if (this->cur_global_offset > this->node_header->size) {
 		this->node_header->size = this->cur_global_offset;
+		this->node_header->modify_time = time(NULL);
 		listfs_write_block(this->fs, this->node, this->node_header);
 	}
 	return count;
