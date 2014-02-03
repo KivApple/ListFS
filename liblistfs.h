@@ -40,6 +40,7 @@ void listfs_foreach_node(ListFS *this, uint64_t node, bool (*callback)(ListFS*, 
 void listfs_foreach_subnode(ListFS *this, uint64_t node, bool (*callback)(ListFS*, uint64_t, ListFS_NodeHeader*, void*), void *data);
 uint64_t listfs_search_node(ListFS *this, uint8_t *path, uint64_t first);
 ListFS_NodeHeader *listfs_fetch_node(ListFS *this, uint64_t node);
+void listfs_rename_node(ListFS *this, uint64_t node, uint8_t *name);
 
 ListFS_OpennedFile *listfs_open_file(ListFS *this, uint64_t node);
 void listfs_file_close(ListFS_OpennedFile *this);

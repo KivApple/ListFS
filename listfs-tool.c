@@ -166,10 +166,7 @@ static int _rename(const char *from, const char *to) {
 	}
 	free(parent_name);
 	listfs_move_node(fs, node, parent);
-	ListFS_NodeHeader *header = listfs_fetch_node(fs, node);
-	strncpy(header->name, file_name, 256);
-	listfs_write_block(fs, node, header);
-	free(header);
+	listfs_rename_node(fs, node, (char*)file_name);
 	return 0;
 }
 

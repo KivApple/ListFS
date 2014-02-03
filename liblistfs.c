@@ -170,12 +170,20 @@ uint64_t listfs_alloc_block(ListFS *this) {
 
 /* Node functions */
 
+ListFS_NodeHeader *listfs_fetch_node(ListFS *this, uint64_t node) {
+	if (!this) return NULL;
+	if (node == -1) return NULL;
+	listfs_log(this, "[%s] node = %llu\n", __func__, node);
+	ListFS_NodeHeader *header = malloc(this->header.block_size);
+	listfs_read_block(this, node, header);
+	return header;
+}
+
 void listfs_insert_node(ListFS *this, uint64_t node, uint64_t parent) {
 	if (!this) return;
 	if (node == -1) return;
 	listfs_log(this, "[%s] node = %llu, parent = %llu\n", __func__, node, parent);
-	ListFS_NodeHeader *header = calloc(this->header.block_size, 1);
-	listfs_read_block(this, node, header);
+	ListFS_NodeHeader *header = listfs_fetch_node(this, node);
 	header->parent = parent;
 	header->prev = -1;
 	ListFS_NodeHeader *tmp_header = calloc(this->header.block_size, 1);
@@ -202,8 +210,7 @@ void listfs_remove_node(ListFS *this, uint64_t node) {
 	if (!this) return;
 	if (node == -1) return;
 	listfs_log(this, "[%s] node = %llu\n", __func__, node);
-	ListFS_NodeHeader *header = calloc(this->header.block_size, 1);
-	listfs_read_block(this, node, header);
+	ListFS_NodeHeader *header = listfs_fetch_node(this, node);
 	uint64_t next = header->next, prev = header->prev, parent = header->parent;
 	if (next != -1) {
 		listfs_read_block(this, next, header);
@@ -245,8 +252,7 @@ bool listfs_delete_node(ListFS *this, uint64_t node) {
 	if (!this) return false;
 	if (node == -1) return false;
 	listfs_log(this, "[%s] node = %llu\n", __func__, node);
-	ListFS_NodeHeader *header = calloc(this->header.block_size, 1);
-	listfs_read_block(this, node, header);
+	ListFS_NodeHeader *header = listfs_fetch_node(this, node);
 	if (header->data != -1) {
 		listfs_log(this, "[%s] Node has data!\n", __func__);
 		free(header);
@@ -284,12 +290,12 @@ void listfs_foreach_node(ListFS *this, uint64_t node, bool (*callback)(ListFS*, 
 void listfs_foreach_subnode(ListFS *this, uint64_t node, bool (*callback)(ListFS*, uint64_t, ListFS_NodeHeader*, void*), void *data) {
 	if (!this) return;
 	listfs_log(this, "[%s] parent node = %llu\n", __func__, node);
-	ListFS_NodeHeader *header = calloc(this->header.block_size, 1);
 	if (node != -1) {
+		ListFS_NodeHeader *header = listfs_fetch_node(this, node);
 		listfs_read_block(this, node, header);
 		listfs_foreach_node(this, header->data, callback, data);
+		free(header);
 	}
-	free(header);
 }
 
 typedef struct {
@@ -342,13 +348,12 @@ uint64_t listfs_search_node(ListFS *this, uint8_t *path, uint64_t first) {
 	}
 }
 
-ListFS_NodeHeader *listfs_fetch_node(ListFS *this, uint64_t node) {
-	if (!this) return NULL;
-	if (node == -1) return NULL;
-	listfs_log(this, "[%s] node = %llu\n", __func__, node);
-	ListFS_NodeHeader *header = malloc(this->header.block_size);
-	listfs_read_block(this, node, header);
-	return header;
+void listfs_rename_node(ListFS *this, uint64_t node, uint8_t *name) {
+	listfs_log(this, "[%s] node = %llu, name = '%s'\n", __func__, node, name);
+	ListFS_NodeHeader *header = listfs_fetch_node(this, node);
+	strncpy(header->name, name, 256);
+	listfs_write_block(this, node, header);
+	free(header);
 }
 
 /* File functions */
