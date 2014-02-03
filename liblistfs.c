@@ -643,6 +643,7 @@ void listfs_create(ListFS *this, uint64_t size, uint16_t block_size) {
 	if (!this) return;
 	listfs_log(this, "[%s] size = %llu, block_size = %u\n", __func__, size, block_size);
 	this->header.magic = LISTFS_MAGIC;
+	this->header.version = (LISTFS_VERSION_MAJOR << 8) | LISTFS_VERSION_MINOR;
 	this->header.base = 0;
 	this->header.size = size;
 	this->header.map_base = 1;
