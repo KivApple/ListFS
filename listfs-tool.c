@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
 		display_usage();
 		return 0;
 	}
-	log_file = fopen("listfs-tool.log", "w");
+	log_file = fopen("/tmp/listfs-tool.log", "w");
 	fs = listfs_init(read_block_func, write_block_func, log_func);
 	char *action = argv[1];
 	char *file_name = argv[2];
