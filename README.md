@@ -1,11 +1,29 @@
 ListFS
 ======
-
 ListFS is simple and straightforward file system, which is designed for the study of the computer and write their own operating systems.
 
 This file system uses wherever possible, two-way linked list.
 To date, the FS does not have many features of modern systems (no access rights, file attributes, journal),
 but this does not mean that it can not be added in the future.
+
+Compilation and installation
+------
+* make - Build default configuration
+* CFLAGS=-DDISABLE_FUSE make - Disable FUSE support by listfs-tool
+* CFLAGS=-DDISABLE_TIME make - Disable timestamp support by liblistfs
+* make clean - Remove compiled files
+* sudo make install - Install liblistfs and listfs-tool to the system
+
+Build dependencies:
+* libc (listfs-tool and liblistfs)
+* fuse (listfs-tool)
+* fasm (BIOS bootloader)
+
+Licence
+------
+Programs and libraries distributed under GNU LGPL Licence
+
+Copyright (C) kiv <kiv.apple@gmail.com>
 
 Data structures
 ------

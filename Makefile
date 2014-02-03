@@ -1,4 +1,4 @@
-CFLAGS=-O2
+CFLAGS+=-O2
 
 all: liblistfs.so listfs-tool boot.bios.bin
 liblistfs.so: liblistfs.c liblistfs.h listfs.h

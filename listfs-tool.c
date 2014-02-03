@@ -26,13 +26,17 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <time.h>
+#ifndef DISABLE_FUSE
 #define FUSE_USE_VERSION 30
 #include <fuse.h>
+#endif
 #include "liblistfs.h"
 
 FILE *log_file;
 FILE *device_file;
 ListFS *fs;
+
+#ifndef DISABLE_FUSE
 
 static int _getattr(const char *path, struct stat *stbuf) {
 	if (strcmp(path, "/") == 0) {
@@ -229,12 +233,16 @@ static struct fuse_operations listfs_operations = {
 	.destroy = _destroy
 };
 
+#endif
+
 void display_usage() {
 	printf("ListFS Tool. Version %i.%i\n", LISTFS_VERSION_MAJOR, LISTFS_VERSION_MINOR);
 	printf("Usage:\n");
 	printf("\tlistfs-tool create <file or device name> <file system size in blocks>\n\t\t<block size> [bootloader file name]\n");
 	printf("\tlistfs-tool dump <file or device name>\n");
+#ifndef DISABLE_FUSE
 	printf("\tlistfs-tool mount <file or device name> <mount point> [fuse options]\n");
+#endif
 	printf("\n");
 }
 
@@ -333,6 +341,7 @@ int main(int argc, char *argv[]) {
 		listfs_close(fs);
 		free(bootloader);
 		return 0;
+#ifndef DISABLE_FUSE
 	} else if (strcmp(action, "mount") == 0) {
 		if (argc < 4) {
 			display_usage();
@@ -347,14 +356,16 @@ int main(int argc, char *argv[]) {
 			argv[i - 2] = argv[i];
 		}
 		return fuse_main(argc - 2, argv, &listfs_operations, NULL);
+#endif
 	} else if (strcmp(action, "dump") == 0) {
 		device_file = fopen(file_name, "r+");
 		if (!listfs_open(fs)) {
 			fprintf(stderr, "Failed to open ListFS volume! Maybe this is not ListFS?\n");
 		}
-		printf("ListFS information:\n\tVersion: %i.%i\n\tBase: %llu\n\tSize: %llu\n\tBitmap base: %llu\n\tBitmap size: %llu\n",
+		printf("ListFS information:\n\tVersion: %i.%i\n\tBase: %llu\n\tSize: %llu\n\tBitmap base: %llu\n\tBitmap size: %llu\n"
+			"\tBlock size: %u\n",
 			fs->header->version >> 8, fs->header->version & 0xFF, fs->header->base, fs->header->size,
-			fs->header->map_base, fs->header->map_size);
+			fs->header->map_base, fs->header->map_size, fs->header->block_size);
 		printf("Nodes:\n");
 		listfs_foreach_node(fs, fs->header->root_dir, dump_node_callback, "\t");
 		listfs_close(fs);
