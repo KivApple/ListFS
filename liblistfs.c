@@ -650,8 +650,8 @@ ListFS *listfs_init(void (*read_block_func)(ListFS*, uint64_t, void*),
 
 void listfs_create(ListFS *this, uint64_t size, uint16_t block_size, void *bootloader, size_t bootloader_size) {
 	if (!this) return;
-	listfs_log(this, "[%s] size = %llu, block_size = %u\n", __func__, size, block_size);
-	this->header = malloc(max(bootloader_size, block_size));
+	listfs_log(this, "[%s] size = %llu, block_size = %u, bootloader_size = %u\n", __func__, size, block_size, bootloader_size);
+	this->header = calloc(max(bootloader_size, block_size), 1);
 	if (bootloader) {
 		memmove(this->header, bootloader, bootloader_size);
 	}

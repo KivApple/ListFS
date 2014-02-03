@@ -1,11 +1,13 @@
 CFLAGS=-O2
 
-all: liblistfs.so listfs-tool
+all: liblistfs.so listfs-tool boot.bios.bin
 liblistfs.so: liblistfs.c liblistfs.h listfs.h
 	gcc $(CFLAGS) -fPIC -shared -Wl,-soname,liblistfs.so.0 -o liblistfs.so.0 liblistfs.c
 	ln -sf liblistfs.so.0 liblistfs.so
 listfs-tool: listfs-tool.c liblistfs.h liblistfs.so
 	gcc $(CFLAGS) `pkg-config --cflags --libs fuse` -L. -llistfs -o listfs-tool listfs-tool.c
+boot.bios.bin: boot.bios.asm
+	fasm boot.bios.asm boot.bios.bin
 clean:
 	rm -f *.so *.so.0 listfs-tool
 install:
