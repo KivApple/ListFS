@@ -245,6 +245,8 @@ uint64_t listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, uint64_
 	header->flags = flags;
 	header->data = -1;
 	header->create_time = time(NULL);
+	header->modify_time = header->create_time;
+	header->access_time = header->create_time;
 	listfs_write_block(this, header_block, header);
 	listfs_insert_node(this, header_block, parent);
 	return header_block;
