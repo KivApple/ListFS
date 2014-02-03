@@ -230,6 +230,7 @@ void display_usage() {
 	printf("ListFS Tool. Version %i.%i\n", LISTFS_VERSION_MAJOR, LISTFS_VERSION_MINOR);
 	printf("Usage:\n");
 	printf("\tlistfs-tool create <file or device name> <file system size in blocks> <block size>\n");
+	printf("\tlistfs-tool dump <file or device name>\n");
 	printf("\tlistfs-tool mount <file or device name> <mount point> [fuse options]\n");
 	printf("\n");
 }
@@ -251,7 +252,7 @@ void log_func(ListFS *fs, char *fmt, va_list ap) {
 char readme_text[] = "This is first file on your ListFS!\n";
 
 int main(int argc, char *argv[]) {
-	if (argc < 4) {
+	if (argc < 3) {
 		display_usage();
 		return 0;
 	}
@@ -260,6 +261,20 @@ int main(int argc, char *argv[]) {
 	char *action = argv[1];
 	char *file_name = argv[2];
 	if (strcmp(action, "create") == 0) {
+		if (argc < 5) {
+			display_usage();
+			return 0;
+		}
+		uint64_t fs_size = atol(argv[3]);
+		uint32_t fs_block_size = atoi(argv[4]);
+		if (fs_size < 2) {
+			printf("FS size too small!\n");
+			return -1;
+		}
+		if (fs_block_size < LISTFS_MIN_BLOCK_SIZE) {
+			printf("Block size must be greater than %u bytes!\n", LISTFS_MIN_BLOCK_SIZE);
+			return -1;
+		}
 		device_file = fopen(file_name, "w+");
 		listfs_create(fs, atol(argv[3]), atoi(argv[4]));
 		ListFS_OpennedFile *file = listfs_open_file(fs, listfs_create_node(fs, "README", 0, -1));
@@ -268,6 +283,10 @@ int main(int argc, char *argv[]) {
 		listfs_close(fs);
 		return 0;
 	} else if (strcmp(action, "mount") == 0) {
+		if (argc < 4) {
+			display_usage();
+			return 0;
+		}
 		device_file = fopen(file_name, "r+");
 		if (!listfs_open(fs)) {
 			fprintf(stderr, "Failed to open ListFS volume! Maybe this is not ListFS?\n");
