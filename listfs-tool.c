@@ -233,7 +233,7 @@ void display_usage() {
 	printf("ListFS Tool. Version %i.%i\n", LISTFS_VERSION_MAJOR, LISTFS_VERSION_MINOR);
 	printf("Usage:\n");
 	printf("\tlistfs-tool create <file or device name> <file system size in blocks>\n\t\t<block size> [bootloader file name]\n");
-	//printf("\tlistfs-tool dump <file or device name>\n");
+	printf("\tlistfs-tool dump <file or device name>\n");
 	printf("\tlistfs-tool mount <file or device name> <mount point> [fuse options]\n");
 	printf("\n");
 }
@@ -253,6 +253,37 @@ void log_func(ListFS *fs, char *fmt, va_list ap) {
 }
 
 char readme_text[] = "This is first file on your ListFS!\n";
+
+void dump_block_list(uint64_t list_block, char *ident) {
+	if (list_block != -1) {
+		uint64_t *list = malloc(fs->header->block_size);
+		size_t block_list_size = fs->header->block_size / sizeof(uint64_t);
+		read_block_func(fs, list_block, list);
+		printf("%s\tBlock list %lli (next = %lli, prev = %lli):\n", ident, list_block, list[block_list_size - 1], list[0]);
+		size_t i;
+		for (i = 1; i < block_list_size - 1; i++) {
+			if (list[i] == -1) break;
+			printf("%s\t\tBlock %llu\n", ident, list[i]);
+		}
+		free(list);
+	}
+}
+
+bool dump_node_callback(ListFS *fs, uint64_t node, ListFS_NodeHeader *header, void *data) {
+	char *ident = data;
+	printf("%sNode %llu (name = '%s', flags = %u, size = %llu, data = %lli)\n", ident, node, header->name, header->flags,
+		header->size, header->data);
+	if (header->flags & LISTFS_NODE_FLAG_DIRECTORY) {
+		char new_ident[strlen(ident) + 2];
+		strcpy(new_ident, ident);
+		new_ident[strlen(ident)] = '\t';
+		new_ident[strlen(ident) + 1] = 0;
+		listfs_foreach_node(fs, header->data, dump_node_callback, new_ident);
+	} else {
+		dump_block_list(header->data, ident);
+	}
+	return true;
+}
 
 int main(int argc, char *argv[]) {
 	if (argc < 3) {
@@ -316,6 +347,17 @@ int main(int argc, char *argv[]) {
 			argv[i - 2] = argv[i];
 		}
 		return fuse_main(argc - 2, argv, &listfs_operations, NULL);
+	} else if (strcmp(action, "dump") == 0) {
+		device_file = fopen(file_name, "r+");
+		if (!listfs_open(fs)) {
+			fprintf(stderr, "Failed to open ListFS volume! Maybe this is not ListFS?\n");
+		}
+		printf("ListFS information:\n\tVersion: %i.%i\n\tBase: %llu\n\tSize: %llu\n\tBitmap base: %llu\n\tBitmap size: %llu\n",
+			fs->header->version >> 8, fs->header->version & 0xFF, fs->header->base, fs->header->size,
+			fs->header->map_base, fs->header->map_size);
+		printf("Nodes:\n");
+		listfs_foreach_node(fs, fs->header->root_dir, dump_node_callback, "\t");
+		listfs_close(fs);
 	} else {
 		printf("Unknown action: %s!\n", action);
 		return -10;
