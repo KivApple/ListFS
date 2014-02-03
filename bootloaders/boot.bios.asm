@@ -27,6 +27,7 @@ write_msg:
 @@:
 	pop si ax
 	ret
+; 
 ; Reboot
 reboot:
 	mov si, reboot_msg
