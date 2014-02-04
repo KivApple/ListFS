@@ -19,7 +19,8 @@ typedef struct {
 	uint64_t root_dir;
 	uint16_t block_size;
 	uint16_t version;
-} ListFS_Header;
+	uint64_t used_blocks;
+} __attribute__((packed)) ListFS_Header;
 
 #define LISTFS_NODE_MAGIC 0x45444F4E
 #define LISTFS_NODE_FLAG_DIRECTORY 1
@@ -36,6 +37,6 @@ typedef struct {
 	uint64_t create_time;
 	uint64_t modify_time;
 	uint64_t access_time;
-} ListFS_NodeHeader;
+} __attribute__((packed)) ListFS_NodeHeader;
 
 #endif

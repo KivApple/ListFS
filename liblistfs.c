@@ -101,6 +101,7 @@ void listfs_write_blocks(ListFS *this, uint64_t index, void *buffer, size_t coun
 void listfs_get_blocks(ListFS *this, uint64_t index, size_t count) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu, count = %u\n", __func__, index, count);
+	this->header->used_blocks += count;
 	size_t i = index / 8;
 	uint8_t j = index % 8;
 	if (j) {
@@ -123,6 +124,7 @@ void listfs_get_blocks(ListFS *this, uint64_t index, size_t count) {
 void listfs_free_blocks(ListFS *this, uint64_t index, size_t count) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu, count = %u\n", __func__, index, count);
+	this->header->used_blocks -= count;
 	size_t i = index / 8;
 	uint8_t j = index % 8;
 	if (j) {
@@ -168,6 +170,7 @@ uint64_t listfs_alloc_block(ListFS *this) {
 	this->map[byte] |= 1 << bit;
 	this->last_allocated_block = byte * 8 + bit;
 	listfs_log(this, "[%s] Found free block %llu\n", __func__, this->last_allocated_block);
+	this->header->used_blocks++;
 	return this->last_allocated_block;
 }
 
@@ -670,6 +673,7 @@ void listfs_create(ListFS *this, uint64_t size, uint16_t block_size, void *bootl
 	this->header->map_base = bytes_to_blocks(bootloader_size ? bootloader_size : sizeof(ListFS_Header), block_size);
 	this->header->map_size = bytes_to_blocks(bytes_to_blocks(size, 8), block_size);
 	this->header->block_size = block_size;
+	this->header->used_blocks = 0;
 	this->map = calloc(block_size, this->header->map_size);
 	listfs_get_blocks(this, 0, this->header->map_base + this->header->map_size);
 	this->header->root_dir = -1;
