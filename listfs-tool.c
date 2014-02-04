@@ -273,6 +273,9 @@ void dump_block_list(uint64_t list_block, char *ident) {
 			if (list[i] == -1) break;
 			printf("%s\t\tBlock %llu\n", ident, list[i]);
 		}
+		if (list[block_list_size - 1] != -1) {
+			dump_block_list(list[block_list_size - 1], ident);
+		}
 		free(list);
 	}
 }
@@ -367,9 +370,9 @@ int main(int argc, char *argv[]) {
 			fprintf(stderr, "Failed to open ListFS volume! Maybe this is not ListFS?\n");
 		}
 		printf("ListFS information:\n\tVersion: %i.%i\n\tBase: %llu\n\tSize: %llu\n\tBitmap base: %llu\n\tBitmap size: %llu\n"
-			"\tBlock size: %u\n",
+			"\tBlock size: %u\n\tUsed blocks count: %llu\n",
 			fs->header->version >> 8, fs->header->version & 0xFF, fs->header->base, fs->header->size,
-			fs->header->map_base, fs->header->map_size, fs->header->block_size);
+			fs->header->map_base, fs->header->map_size, fs->header->block_size, fs->header->used_blocks);
 		printf("Nodes:\n");
 		listfs_foreach_node(fs, fs->header->root_dir, dump_node_callback, "\t");
 		listfs_close(fs);
