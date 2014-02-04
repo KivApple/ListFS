@@ -39,7 +39,7 @@ Data structures
 * uint64_t root_dir - first node in root directory
 * uint16_t block_size - block size
 * uint16_t version - version (0xHHLL)
-
+* uint64_t used_blocks - count of used blocks
 
 ### ListFS node header
 
@@ -54,7 +54,6 @@ Data structures
 * uint64_t create_time
 * uint64_t modify_time
 * uint64_t access_time
-
 
 ### ListFS file block list
 
