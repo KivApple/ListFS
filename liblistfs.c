@@ -566,7 +566,6 @@ void listfs_file_truncate(ListFS_OpennedFile *this) {
 			listfs_read_block(this->fs, cur_list, list);
 			cur_block = 1;
 			free_blocks = 0;
-			break;
 		} else {
 			if (list[cur_block] != -1) {
 				listfs_free_blocks(this->fs, list[cur_block], 1);
