@@ -318,7 +318,7 @@ int main(int argc, char *argv[]) {
 			return -1;
 		}
 		uint8_t *bootloader = NULL;
-		size_t bootloader_size;
+		size_t bootloader_size = 0;
 		if (argc >= 6) {
 			char *bootloader_file_name = argv[5];
 			FILE *bootloader_file = fopen(bootloader_file_name, "r");
@@ -326,10 +326,14 @@ int main(int argc, char *argv[]) {
 				printf("Failed to open '%s'!\n", bootloader_file_name);
 				return -2;
 			}
-			while (!feof(bootloader_file)) {
+			while (feof(bootloader_file) == 0) {
+				size_t offset = bootloader_size;
 				bootloader_size += LISTFS_MIN_BLOCK_SIZE;
 				bootloader = realloc(bootloader, bootloader_size);
-				fread(bootloader, LISTFS_MIN_BLOCK_SIZE, 1, bootloader_file);
+				if (fread(bootloader + offset, LISTFS_MIN_BLOCK_SIZE, 1, bootloader_file) == 0) {
+					bootloader_size = offset;
+					break;
+				}
 			}
 			fclose(bootloader_file);
 		}
