@@ -29,6 +29,7 @@
 #ifndef DISABLE_FUSE
 #define FUSE_USE_VERSION 30
 #include <fuse.h>
+#include <sys/statvfs.h>
 #endif
 #include "liblistfs.h"
 
@@ -217,6 +218,16 @@ void _destroy() {
 	listfs_close(fs);
 }
 
+static int _statfs(const char *path, struct statvfs *stbuf) {
+	stbuf->f_bsize = fs->header->block_size;
+	stbuf->f_frsize = fs->header->block_size;
+	stbuf->f_blocks = fs->header->size;
+	stbuf->f_bfree = fs->header->size - fs->header->used_blocks;
+	stbuf->f_bavail = stbuf->f_bfree;
+	stbuf->f_namemax = 255;
+	return 0;
+}
+
 static struct fuse_operations listfs_operations = {
 	.getattr = _getattr,
 	.readdir = _readdir,
@@ -230,7 +241,8 @@ static struct fuse_operations listfs_operations = {
 	.read = _read,
 	.write = _write,
 	.truncate = _truncate,
-	.destroy = _destroy
+	.destroy = _destroy,
+	.statfs = _statfs
 };
 
 #endif
