@@ -255,6 +255,24 @@ strlen:
 	ret
 ; Split file name DS:BP
 split_file_name:
+	push ax
+	mov si, bp
+@@:
+	lodsb
+	test al, al
+	jz @f
+	cmp al, '/'
+	je @f
+	jmp @b
+@@:
+	cmp byte[si - 1], 0
+	jne @f
+	xor si, si
+	jmp .exit
+@@:
+	mov byte[si - 1], 0
+.exit:
+	pop ax
 	ret
 ; Load file with name DS:SI to buffer BX:0 (Result: BX pointers to end of file data)
 load_file:
@@ -266,6 +284,8 @@ load_file:
 	call write_msg
 	mov si, load_msg_suffix
 	call write_msg
+	call split_file_name
+	push si
 	mov bx, f_info shr 4
 	mov si, fs_first_file
 .search:
@@ -286,6 +306,21 @@ load_file:
 	mov si, f_info.next
 	jmp .search
 .found:
+	pop si
+	test si, si
+	jnz @f
+	test [f_info.flags], 1
+	jz .load_data
+	jmp not_found
+@@:
+	test [f_info.flags], 1
+	jz not_found
+	mov bp, si
+	call split_file_name
+	push si
+	mov si, f_info.data
+	jmp .search
+.load_data:
 	mov si, f_info.data
 .load_block_list:
 	mov ax, word[si]
