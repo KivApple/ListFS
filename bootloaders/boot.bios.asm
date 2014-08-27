@@ -13,12 +13,12 @@ fs_block_size dw ?
 fs_version dw ?
 fs_used_blocks dq ?
 ; Bootloader data
+extra_boot_loader_sector dq 1
 boot_msg db "Loading ListFS bootloader...",0
 reboot_msg db 13,10,"Press any key for restart...",13,10,0
 label disk_id byte at $$ + 4
 disk_heads dw 0
 label disk_spt word at $$
-extra_boot_loader_sector dq 1
 virtual at 0x600
 dap:
 	.size db ?
@@ -27,6 +27,17 @@ dap:
 	.offset dw ?
 	.segment dw ?
 	.sector dq ?
+end virtual
+virtual at 0x1000
+f_info:
+	.name db 256 dup (?)
+	.parent dq ?
+	.next dq ?
+	.prev dq ?
+	.data dq ?
+	.magic dd ?
+	.flags dd ?
+	.size dd ?
 end virtual
 label low_memory_size word at $$ + 2
 ; Write message from DS:SI
@@ -195,10 +206,142 @@ extra_boot_code_base:
 ; Addional bootloader data
 extra_boot_code_size dw 1
 ok_msg db "OK",13,10,0
+load_msg_prefix db 'Loading "',0
+load_msg_suffix db '"...',0
+secondary_boot_file_name db "boot.bin",0
+load_block_tmp_index dq ?
+virtual at 0x9000
+secondary_boot:
+	.magic dw ?
+	.entry_point dw ?
+	.reboot dw ?
+	.error dw ?
+	.write_msg dw ?
+	.load_sector dw ?
+	.load_file dw ?
+	.disk_id dw ?
+	.low_memory_size dw ?
+end virtual
+; Load ListFS block with index DS:SI to buffer BX:0 (BX will be pointer to end of file data)
+load_block:
+	push ax bx cx si di
+	mov di, load_block_tmp_index
+	mov cx, 8 / 2
+	rep movsw
+	mov si, load_block_tmp_index
+	xor cx, cx
+@@:
+	call load_sector
+	xor ax, ax
+	add word[load_block_tmp_index], 1
+	adc word[load_block_tmp_index + 2], ax
+	adc word[load_block_tmp_index + 4], ax
+	adc word[load_block_tmp_index + 6], ax
+	add bx, 512 shr 4
+	add cx, 512
+	cmp cx, [fs_block_size]
+	jb @b
+	pop di si cx bx ax
+	ret
+; Put DS:SI string length to CX
+strlen:
+	push ax di
+	mov cx, 0xFFFF
+	xor al, al
+	repne scasb
+	neg cx
+	dec cx
+	pop di ax
+	ret
+; Split file name DS:BP
+split_file_name:
+	ret
+; Load file with name DS:SI to buffer BX:0 (Result: BX pointers to end of file data)
+load_file:
+	push ax cx si di bp bx
+	mov bp, si
+	mov si, load_msg_prefix
+	call write_msg
+	mov si, bp
+	call write_msg
+	mov si, load_msg_suffix
+	call write_msg
+	mov bx, f_info shr 4
+	mov si, fs_first_file
+.search:
+	mov ax, word[si]
+	and ax, word[si + 2]
+	and ax, word[si + 4]
+	and ax, word[si + 6]
+	cmp ax, 0xFFFF
+	je not_found
+	call load_block
+	push si
+	mov si, f_info.name
+	mov di, bp
+	call strlen
+	repe cmpsb
+	pop si
+	je .found
+	mov si, f_info.next
+	jmp .search
+.found:
+	mov si, f_info.data
+.load_block_list:
+	mov ax, word[si]
+	and ax, word[si + 2]
+	and ax, word[si + 4]
+	and ax, word[si + 6]
+	cmp ax, 0xFFFF
+	je .file_end
+	mov bx, f_info shr 4
+	call load_block
+	mov si, f_info + 8
+.load_block:
+	pop bx
+	call load_block
+	mov ax, [fs_block_size]
+	shr ax, 4
+	add bx, ax
+	cmp bx, [low_memory_size]
+	jae out_of_memory
+	push bx
+	add si, 8
+	mov ax, si
+	add ax, 8
+	cmp ax, [fs_block_size]
+	jb .load_block
+	jmp .load_block_list
+.file_end:
+	mov si, ok_msg
+	call write_msg
+	pop bx bp di si cx ax
+	ret
 ; Addional bootloader entry point
 extra_boot_entry:
-	; Reboot
-	jmp reboot
+	; Load secondary boot loader
+	mov si, secondary_boot_file_name
+	mov bx, secondary_boot shr 4
+	call load_file
+	; Check secondary boot loader magic
+	cmp [secondary_boot.magic], 0x7C00
+	je @f
+	call error
+	db "WRONG MAGIC",0
+@@:
+	; Fill function table
+	mov [secondary_boot.reboot], reboot
+	mov [secondary_boot.error], error
+	mov [secondary_boot.write_msg], write_msg
+	mov [secondary_boot.load_sector], load_sector
+	mov [secondary_boot.load_file], load_file
+	xor ax, ax
+	mov al, [disk_id]
+	mov [secondary_boot.disk_id], ax
+	mov ax, [low_memory_size]
+	mov [secondary_boot.low_memory_size], ax
+	; Jump to secondary boot loader
+	jmp [secondary_boot.entry_point]
 ; Free space and signature
 rb 1022 - ($ - $$)
 extra_boot_sig db 0xAA, 0x55

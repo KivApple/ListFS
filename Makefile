@@ -20,3 +20,11 @@ uninstall:
 	rm -f /usr/lib/liblistfs.so.0
 	rm -f /usr/bin/listfs-tool
 	rm -f /usr/include/listfs.h
+demo_boot_bios: bootloaders/boot.bios.bin
+	listfs-tool create disk.img 2880 512 bootloaders/boot.bios.bin
+	mkdir /tmp/listfs_mp
+	listfs-tool mount disk.img /tmp/listfs_mp
+	rm -f /tmp/listfs_mp/README
+	fasm bootloaders/boot.bios.demo.asm /tmp/listfs_mp/boot.bin
+	fusermount -u /tmp/listfs_mp
+	rm -rf /tmp/listfs_mp
