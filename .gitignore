@@ -1,0 +1,7 @@
+*.bin
+*.img
+*.so
+*.so.0
+*.dll
+*.exe
+listfs-tool

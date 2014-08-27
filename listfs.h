@@ -9,14 +9,16 @@
 #define LISTFS_MAGIC 0x5453494C
 #define LISTFS_MIN_BLOCK_SIZE 512
 
+typedef uint64_t ListFS_BlockIndex;
+
 typedef struct {
 	uint8_t jump[4];
 	uint32_t magic;
-	uint64_t base;
+	ListFS_BlockIndex base;
 	uint64_t size;
-	uint64_t map_base;
+	ListFS_BlockIndex map_base;
 	uint64_t map_size;
-	uint64_t root_dir;
+	ListFS_BlockIndex root_dir;
 	uint16_t block_size;
 	uint16_t version;
 	uint64_t used_blocks;
@@ -27,10 +29,10 @@ typedef struct {
 
 typedef struct {
 	uint8_t name[256];
-	uint64_t parent;
-	uint64_t next;
-	uint64_t prev;
-	uint64_t data;
+	ListFS_BlockIndex parent;
+	ListFS_BlockIndex next;
+	ListFS_BlockIndex prev;
+	ListFS_BlockIndex data;
 	uint32_t magic;
 	uint32_t flags;
 	uint64_t size;

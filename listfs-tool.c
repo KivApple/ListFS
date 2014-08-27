@@ -45,7 +45,7 @@ static int _getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_nlink = 2;
 		return 0;
 	}
-	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
+	ListFS_BlockIndex node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
 	if (node == -1) {
 		return -ENOENT;
 	}
@@ -69,14 +69,14 @@ typedef struct {
 	void *buf;
 } ReadDirState;
 
-bool readdir_callback(ListFS *fs, uint64_t node, ListFS_NodeHeader *header, void *data) {
+bool readdir_callback(ListFS *fs, ListFS_BlockIndex node, ListFS_NodeHeader *header, void *data) {
 	ReadDirState *state = data;
 	state->filler(state->buf, header->name, NULL, 0);
 	return true;
 }
 
 static int _readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi) {
-	uint64_t node;
+	ListFS_BlockIndex node;
 	if (strcmp(path, "/") == 0) {
 		node = fs->header->root_dir;
 	} else {
@@ -106,7 +106,7 @@ int _make_node(const char *path, uint32_t flags) {
 	free(_path);
 	const char *file_name = path + strlen(parent_name);
 	if (file_name[0] == '/') file_name++;
-	uint64_t parent;
+	ListFS_BlockIndex parent;
 	if (strcmp(parent_name, "/") == 0) {
 		parent = -1;
 	} else {
@@ -129,7 +129,7 @@ static int _mkdir(const char *path, mode_t mode) {
 }
 
 static int _unlink(const char *path) {
-	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
+	ListFS_BlockIndex node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
 	if (node == -1) return -ENOENT;
 	ListFS_OpennedFile *file = listfs_open_file(fs, node);
 	if (file) {
@@ -145,7 +145,7 @@ static int _unlink(const char *path) {
 }
 
 static int _rmdir(const char *path) {
-	uint64_t node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
+	ListFS_BlockIndex node = listfs_search_node(fs, (char*)path + 1, fs->header->root_dir);
 	if (node == -1) return -ENOENT;
 	if (listfs_delete_node(fs, node)) {
 		return 0;
@@ -155,14 +155,14 @@ static int _rmdir(const char *path) {
 }
 
 static int _rename(const char *from, const char *to) {
-	uint64_t node = listfs_search_node(fs, (char*)from + 1, fs->header->root_dir);
+	ListFS_BlockIndex node = listfs_search_node(fs, (char*)from + 1, fs->header->root_dir);
 	if (node == -1) return -ENOENT;
 	char *_path = strdup(to);
 	char *parent_name = strdup(dirname(_path));
 	free(_path);
 	const char *file_name = to + strlen(parent_name);
 	if (file_name[0] == '/') file_name++;
-	uint64_t parent;
+	ListFS_BlockIndex parent;
 	if (strcmp(parent_name, "/") == 0) {
 		parent = -1;
 	} else {
@@ -258,12 +258,12 @@ void display_usage() {
 	printf("\n");
 }
 
-void read_block_func(ListFS *fs, uint64_t index, void *buffer) {
+void read_block_func(ListFS *fs, ListFS_BlockIndex index, void *buffer) {
 	fseek(device_file, index * fs->header->block_size + fs->header->base, SEEK_SET);
 	fread(buffer, fs->header->block_size, 1, device_file);
 }
 
-void write_block_func(ListFS *fs, uint64_t index, void *buffer) {
+void write_block_func(ListFS *fs, ListFS_BlockIndex index, void *buffer) {
 	fseek(device_file, index * fs->header->block_size + fs->header->base, SEEK_SET);
 	fwrite(buffer, fs->header->block_size, 1, device_file);
 }
@@ -274,10 +274,10 @@ void log_func(ListFS *fs, char *fmt, va_list ap) {
 
 char readme_text[] = "This is first file on your ListFS!\n";
 
-void dump_block_list(uint64_t list_block, char *ident) {
+void dump_block_list(ListFS_BlockIndex list_block, char *ident) {
 	if (list_block != -1) {
-		uint64_t *list = malloc(fs->header->block_size);
-		size_t block_list_size = fs->header->block_size / sizeof(uint64_t);
+		ListFS_BlockIndex *list = malloc(fs->header->block_size);
+		size_t block_list_size = fs->header->block_size / sizeof(ListFS_BlockIndex);
 		read_block_func(fs, list_block, list);
 		printf("%s\tBlock list %lli (next = %lli, prev = %lli):\n", ident, list_block, list[block_list_size - 1], list[0]);
 		size_t i;
@@ -292,7 +292,7 @@ void dump_block_list(uint64_t list_block, char *ident) {
 	}
 }
 
-bool dump_node_callback(ListFS *fs, uint64_t node, ListFS_NodeHeader *header, void *data) {
+bool dump_node_callback(ListFS *fs, ListFS_BlockIndex node, ListFS_NodeHeader *header, void *data) {
 	char *ident = data;
 	printf("%sNode %llu (name = '%s', flags = %u, size = %llu, data = %lli)\n", ident, node, header->name, header->flags,
 		header->size, header->data);

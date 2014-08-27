@@ -62,13 +62,13 @@ void listfs_log(ListFS *this, char *fmt, ...) {
 	}
 }
 
-void listfs_read_block(ListFS *this, uint64_t index, void *buffer) {
+void listfs_read_block(ListFS *this, ListFS_BlockIndex index, void *buffer) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu\n", __func__, index);
 	this->read_block_func(this, index, buffer);
 }
 
-void listfs_read_blocks(ListFS *this, uint64_t index, void *buffer, size_t count) {
+void listfs_read_blocks(ListFS *this, ListFS_BlockIndex index, void *buffer, size_t count) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu, count = %i\n", __func__, index, count);
 	while (count) {
@@ -79,13 +79,13 @@ void listfs_read_blocks(ListFS *this, uint64_t index, void *buffer, size_t count
 	}
 }
 
-void listfs_write_block(ListFS *this, uint64_t index, void *buffer) {
+void listfs_write_block(ListFS *this, ListFS_BlockIndex index, void *buffer) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu\n", __func__, index);
 	this->write_block_func(this, index, buffer);
 }
 
-void listfs_write_blocks(ListFS *this, uint64_t index, void *buffer, size_t count) {
+void listfs_write_blocks(ListFS *this, ListFS_BlockIndex index, void *buffer, size_t count) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu, count = %i\n", __func__, index, count);
 	while (count) {
@@ -98,7 +98,7 @@ void listfs_write_blocks(ListFS *this, uint64_t index, void *buffer, size_t coun
 
 /* Bitmap functions */
 
-void listfs_get_blocks(ListFS *this, uint64_t index, size_t count) {
+void listfs_get_blocks(ListFS *this, ListFS_BlockIndex index, size_t count) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu, count = %u\n", __func__, index, count);
 	this->header->used_blocks += count;
@@ -121,7 +121,7 @@ void listfs_get_blocks(ListFS *this, uint64_t index, size_t count) {
 	}
 }
 
-void listfs_free_blocks(ListFS *this, uint64_t index, size_t count) {
+void listfs_free_blocks(ListFS *this, ListFS_BlockIndex index, size_t count) {
 	if (!this) return;
 	listfs_log(this, "[%s] index = %llu, count = %u\n", __func__, index, count);
 	this->header->used_blocks -= count;
@@ -145,7 +145,7 @@ void listfs_free_blocks(ListFS *this, uint64_t index, size_t count) {
 	}
 }
 
-uint64_t listfs_alloc_block(ListFS *this) {
+ListFS_BlockIndex listfs_alloc_block(ListFS *this) {
 	if (!this) return;
 	listfs_log(this, "[%s]\n", __func__);
 	size_t start_byte = this->last_allocated_block / 8;
@@ -176,7 +176,7 @@ uint64_t listfs_alloc_block(ListFS *this) {
 
 /* Node functions */
 
-ListFS_NodeHeader *listfs_fetch_node(ListFS *this, uint64_t node) {
+ListFS_NodeHeader *listfs_fetch_node(ListFS *this, ListFS_BlockIndex node) {
 	if (!this) return NULL;
 	if (node == -1) return NULL;
 	listfs_log(this, "[%s] node = %llu\n", __func__, node);
@@ -185,7 +185,7 @@ ListFS_NodeHeader *listfs_fetch_node(ListFS *this, uint64_t node) {
 	return header;
 }
 
-void listfs_insert_node(ListFS *this, uint64_t node, uint64_t parent) {
+void listfs_insert_node(ListFS *this, ListFS_BlockIndex node, ListFS_BlockIndex parent) {
 	if (!this) return;
 	if (node == -1) return;
 	listfs_log(this, "[%s] node = %llu, parent = %llu\n", __func__, node, parent);
@@ -212,12 +212,12 @@ void listfs_insert_node(ListFS *this, uint64_t node, uint64_t parent) {
 	free(header);
 }
 
-void listfs_remove_node(ListFS *this, uint64_t node) {
+void listfs_remove_node(ListFS *this, ListFS_BlockIndex node) {
 	if (!this) return;
 	if (node == -1) return;
 	listfs_log(this, "[%s] node = %llu\n", __func__, node);
 	ListFS_NodeHeader *header = listfs_fetch_node(this, node);
-	uint64_t next = header->next, prev = header->prev, parent = header->parent;
+	ListFS_BlockIndex next = header->next, prev = header->prev, parent = header->parent;
 	if (next != -1) {
 		listfs_read_block(this, next, header);
 		header->prev = prev;
@@ -239,10 +239,10 @@ void listfs_remove_node(ListFS *this, uint64_t node) {
 	free(header);
 }
 
-uint64_t listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, uint64_t parent) {
+ListFS_BlockIndex listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, ListFS_BlockIndex parent) {
 	if (!this) return;
 	listfs_log(this, "[%s] name = '%s', flags = %llu, parent = %llu\n", __func__, name, flags, parent);
-	uint64_t header_block = listfs_alloc_block(this);
+	ListFS_BlockIndex header_block = listfs_alloc_block(this);
 	if (header_block == -1) return -1;
 	ListFS_NodeHeader *header = calloc(this->header->block_size, 1);
 	header->magic = LISTFS_NODE_MAGIC;
@@ -259,7 +259,7 @@ uint64_t listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, uint64_
 	return header_block;
 }
 
-bool listfs_delete_node(ListFS *this, uint64_t node) {
+bool listfs_delete_node(ListFS *this, ListFS_BlockIndex node) {
 	if (!this) return false;
 	if (node == -1) return false;
 	listfs_log(this, "[%s] node = %llu\n", __func__, node);
@@ -275,7 +275,7 @@ bool listfs_delete_node(ListFS *this, uint64_t node) {
 	return true;
 }
 
-void listfs_move_node(ListFS *this, uint64_t node, uint64_t new_parent) {
+void listfs_move_node(ListFS *this, ListFS_BlockIndex node, ListFS_BlockIndex new_parent) {
 	if (!this) return;
 	if (node == -1) return;
 	listfs_log(this, "[%s] node = %llu, new_parent = %llu\n", __func__, node, new_parent);
@@ -283,7 +283,7 @@ void listfs_move_node(ListFS *this, uint64_t node, uint64_t new_parent) {
 	listfs_insert_node(this, node, new_parent);
 }
 
-void listfs_foreach_node(ListFS *this, uint64_t node, bool (*callback)(ListFS*, uint64_t, ListFS_NodeHeader*, void*), void *data) {
+void listfs_foreach_node(ListFS *this, ListFS_BlockIndex node, bool (*callback)(ListFS*, ListFS_BlockIndex, ListFS_NodeHeader*, void*), void *data) {
 	if (!this) return;
 	listfs_log(this, "[%s] first node = %llu\n", __func__, node);
 	ListFS_NodeHeader *header = calloc(this->header->block_size, 1);
@@ -298,7 +298,7 @@ void listfs_foreach_node(ListFS *this, uint64_t node, bool (*callback)(ListFS*, 
 	free(header);
 }
 
-void listfs_foreach_subnode(ListFS *this, uint64_t node, bool (*callback)(ListFS*, uint64_t, ListFS_NodeHeader*, void*), void *data) {
+void listfs_foreach_subnode(ListFS *this, ListFS_BlockIndex node, bool (*callback)(ListFS*, ListFS_BlockIndex, ListFS_NodeHeader*, void*), void *data) {
 	if (!this) return;
 	listfs_log(this, "[%s] parent node = %llu\n", __func__, node);
 	if (node != -1) {
@@ -310,13 +310,13 @@ void listfs_foreach_subnode(ListFS *this, uint64_t node, bool (*callback)(ListFS
 }
 
 typedef struct {
-	uint64_t node;
+	ListFS_BlockIndex node;
 	uint64_t flags;
-	uint64_t data;
+	ListFS_BlockIndex data;
 	uint8_t *name;
 } ListFS_SearchState;
 
-bool listfs_search_node_callback(ListFS *fs, uint64_t node, ListFS_NodeHeader *header, void *data) {
+bool listfs_search_node_callback(ListFS *fs, ListFS_BlockIndex node, ListFS_NodeHeader *header, void *data) {
 	ListFS_SearchState *state = data;
 	if (strncmp(header->name, state->name, sizeof(header->name)) == 0) {
 		state->node = node;
@@ -328,7 +328,7 @@ bool listfs_search_node_callback(ListFS *fs, uint64_t node, ListFS_NodeHeader *h
 	}
 }
 
-uint64_t listfs_search_node(ListFS *this, uint8_t *path, uint64_t first) {
+uint64_t listfs_search_node(ListFS *this, uint8_t *path, ListFS_BlockIndex first) {
 	listfs_log(this, "[%s] path = '%s', first = %llu\n", __func__, path, first);
 	if (!this) return;
 	uint8_t node_name[256 + 1];
@@ -359,7 +359,7 @@ uint64_t listfs_search_node(ListFS *this, uint8_t *path, uint64_t first) {
 	}
 }
 
-void listfs_rename_node(ListFS *this, uint64_t node, uint8_t *name) {
+void listfs_rename_node(ListFS *this, ListFS_BlockIndex node, uint8_t *name) {
 	listfs_log(this, "[%s] node = %llu, name = '%s'\n", __func__, node, name);
 	ListFS_NodeHeader *header = listfs_fetch_node(this, node);
 	strncpy(header->name, name, 256);
@@ -369,7 +369,7 @@ void listfs_rename_node(ListFS *this, uint64_t node, uint8_t *name) {
 
 /* File functions */
 
-ListFS_OpennedFile *listfs_open_file(ListFS *this, uint64_t node) {
+ListFS_OpennedFile *listfs_open_file(ListFS *this, ListFS_BlockIndex node) {
 	if (!this) return;
 	listfs_log(this, "[%s] node = %llu\n", __func__, node);
 	if (node == -1) return NULL;
@@ -428,7 +428,7 @@ void listfs_file_close(ListFS_OpennedFile *this) {
 bool listfs_file_touch_cur_block(ListFS_OpennedFile *this, bool write) {
 	if (!this) return false;
 	listfs_log(this->fs, "[%s] write = %u\n", __func__, write);
-	size_t block_list_size = this->fs->header->block_size / sizeof(uint64_t);
+	size_t block_list_size = this->fs->header->block_size / sizeof(ListFS_BlockIndex);
 	bool result = false;
 	if (this->cur_block_list_block == -1) {
 		if (write) {
@@ -436,7 +436,7 @@ bool listfs_file_touch_cur_block(ListFS_OpennedFile *this, bool write) {
 			if (this->cur_block_list_block != -1) {
 				this->node_header->data = this->cur_block_list_block;
 				listfs_write_block(this->fs, this->node, this->node_header);
-				memset(this->cur_block_list, -1, block_list_size * sizeof(uint64_t));
+				memset(this->cur_block_list, -1, block_list_size * sizeof(ListFS_BlockIndex));
 				listfs_write_block(this->fs, this->cur_block_list_block, this->cur_block_list);
 			}
 		}
@@ -456,9 +456,9 @@ bool listfs_file_touch_cur_block(ListFS_OpennedFile *this, bool write) {
 					this->cur_block_list[block_list_size - 1] = listfs_alloc_block(this->fs);
 					if (this->cur_block_list[block_list_size - 1] != -1) {
 						listfs_write_block(this->fs, this->cur_block_list_block, this->cur_block_list);
-						uint64_t prev_block_list = this->cur_block_list_block;
+						ListFS_BlockIndex prev_block_list = this->cur_block_list_block;
 						this->cur_block_list_block = this->cur_block_list[block_list_size - 1];
-						memset(this->cur_block_list + 1, -1, (block_list_size - 1) * sizeof(uint64_t));
+						memset(this->cur_block_list + 1, -1, (block_list_size - 1) * sizeof(ListFS_BlockIndex));
 						this->cur_block_list[0] = prev_block_list;
 						listfs_write_block(this->fs, this->cur_block_list_block, this->cur_block_list);
 						this->cur_block = 1;
@@ -490,7 +490,7 @@ bool listfs_file_touch_cur_block(ListFS_OpennedFile *this, bool write) {
 bool listfs_file_switch_cur_block(ListFS_OpennedFile *this, bool prev, bool write) {
 	if (!this) return false;
 	listfs_log(this->fs, "[%s] prev = %u, write = %u\n", __func__, prev, write);
-	size_t block_list_size = this->fs->header->block_size / sizeof(uint64_t);
+	size_t block_list_size = this->fs->header->block_size / sizeof(ListFS_BlockIndex);
 	bool result;
 	if (prev) {
 		if (this->cur_block > 0) {
@@ -531,14 +531,14 @@ void listfs_file_seek(ListFS_OpennedFile *this, uint64_t offset, bool write) {
 void listfs_file_truncate(ListFS_OpennedFile *this) {
 	if (!this) return;
 	listfs_log(this->fs, "[%s]\n", __func__);
-	uint64_t cur_list = this->cur_block_list_block;
+	ListFS_BlockIndex cur_list = this->cur_block_list_block;
 	if (cur_list == -1) return;
 	size_t cur_block = this->cur_block;
 	if (this->cur_offset > 0) {
 		cur_block++;
 	}
-	size_t block_list_size = this->fs->header->block_size / sizeof(uint64_t);
-	uint64_t *list = malloc(block_list_size * sizeof(uint64_t));
+	size_t block_list_size = this->fs->header->block_size / sizeof(ListFS_BlockIndex);
+	ListFS_BlockIndex *list = malloc(block_list_size * sizeof(ListFS_BlockIndex));
 	listfs_read_block(this->fs, cur_list, list);
 	size_t free_blocks = 0;
 	while (true) {
@@ -550,7 +550,7 @@ void listfs_file_truncate(ListFS_OpennedFile *this) {
 					this->cur_block_list_block = -1;
 					listfs_write_block(this->fs, this->node, this->node_header);
 				} else {
-					uint64_t *prev_list = malloc(block_list_size * sizeof(uint64_t));
+					ListFS_BlockIndex *prev_list = malloc(block_list_size * sizeof(ListFS_BlockIndex));
 					listfs_read_block(this->fs, list[0], prev_list);
 					list[block_list_size - 1] = -1;
 					listfs_write_block(this->fs, list[0], prev_list);
@@ -649,8 +649,8 @@ size_t listfs_file_read(ListFS_OpennedFile *this, void *buffer, size_t length) {
 
 /* Main functions */
 
-ListFS *listfs_init(void (*read_block_func)(ListFS*, uint64_t, void*),
-		void (*write_block_func)(ListFS*, uint64_t, void*), void (*log_func)(ListFS*, char*, va_list)) {
+ListFS *listfs_init(void (*read_block_func)(ListFS*, ListFS_BlockIndex, void*),
+		void (*write_block_func)(ListFS*, ListFS_BlockIndex, void*), void (*log_func)(ListFS*, char*, va_list)) {
 	ListFS *this = calloc(sizeof(ListFS), 1);
 	this->read_block_func = read_block_func;
 	this->write_block_func = write_block_func;

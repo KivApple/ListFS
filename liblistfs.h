@@ -7,12 +7,12 @@
 
 typedef struct _ListFS ListFS;
 struct _ListFS {
-	void (*read_block_func)(ListFS*, uint64_t, void*);
-	void (*write_block_func)(ListFS*, uint64_t, void*);
+	void (*read_block_func)(ListFS*, ListFS_BlockIndex, void*);
+	void (*write_block_func)(ListFS*, ListFS_BlockIndex, void*);
 	void (*log_func)(ListFS*, char *fmt, va_list args);
 	ListFS_Header *header;
 	uint8_t *map;
-	uint64_t last_allocated_block;
+	ListFS_BlockIndex last_allocated_block;
 };
 
 typedef struct {
@@ -27,22 +27,22 @@ typedef struct {
 	uint32_t link_count;
 } ListFS_OpennedFile;
 
-ListFS *listfs_init(void (*read_block_func)(ListFS*, uint64_t, void*),
-	void (*write_block_func)(ListFS*, uint64_t, void*), void (*log_func)(ListFS*, char*, va_list));
+ListFS *listfs_init(void (*read_block_func)(ListFS*, ListFS_BlockIndex, void*),
+	void (*write_block_func)(ListFS*, ListFS_BlockIndex, void*), void (*log_func)(ListFS*, char*, va_list));
 void listfs_create(ListFS *this, uint64_t size, uint16_t block_size, void *bootloader, size_t bootloader_size);
 bool listfs_open(ListFS *this);
 void listfs_close(ListFS *this);
 
-uint64_t listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, uint64_t parent);
-bool listfs_delete_node(ListFS *this, uint64_t node);
-void listfs_move_node(ListFS *this, uint64_t node, uint64_t new_parent);
-void listfs_foreach_node(ListFS *this, uint64_t node, bool (*callback)(ListFS*, uint64_t, ListFS_NodeHeader*, void*), void *data);
-void listfs_foreach_subnode(ListFS *this, uint64_t node, bool (*callback)(ListFS*, uint64_t, ListFS_NodeHeader*, void*), void *data);
-uint64_t listfs_search_node(ListFS *this, uint8_t *path, uint64_t first);
-ListFS_NodeHeader *listfs_fetch_node(ListFS *this, uint64_t node);
-void listfs_rename_node(ListFS *this, uint64_t node, uint8_t *name);
+uint64_t listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, ListFS_BlockIndex parent);
+bool listfs_delete_node(ListFS *this, ListFS_BlockIndex node);
+void listfs_move_node(ListFS *this, ListFS_BlockIndex node, ListFS_BlockIndex new_parent);
+void listfs_foreach_node(ListFS *this, ListFS_BlockIndex node, bool (*callback)(ListFS*, ListFS_BlockIndex, ListFS_NodeHeader*, void*), void *data);
+void listfs_foreach_subnode(ListFS *this, ListFS_BlockIndex node, bool (*callback)(ListFS*, ListFS_BlockIndex, ListFS_NodeHeader*, void*), void *data);
+uint64_t listfs_search_node(ListFS *this, uint8_t *path, ListFS_BlockIndex first);
+ListFS_NodeHeader *listfs_fetch_node(ListFS *this, ListFS_BlockIndex node);
+void listfs_rename_node(ListFS *this, ListFS_BlockIndex node, uint8_t *name);
 
-ListFS_OpennedFile *listfs_open_file(ListFS *this, uint64_t node);
+ListFS_OpennedFile *listfs_open_file(ListFS *this, ListFS_BlockIndex node);
 void listfs_file_close(ListFS_OpennedFile *this);
 void listfs_file_seek(ListFS_OpennedFile *this, uint64_t offset, bool write);
 void listfs_file_truncate(ListFS_OpennedFile *this);
