@@ -33,12 +33,12 @@ void listfs_create(ListFS *this, uint64_t size, uint16_t block_size, void *bootl
 bool listfs_open(ListFS *this);
 void listfs_close(ListFS *this);
 
-uint64_t listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, ListFS_BlockIndex parent);
+ListFS_BlockIndex listfs_create_node(ListFS *this, uint8_t *name, uint32_t flags, ListFS_BlockIndex parent);
 bool listfs_delete_node(ListFS *this, ListFS_BlockIndex node);
 void listfs_move_node(ListFS *this, ListFS_BlockIndex node, ListFS_BlockIndex new_parent);
 void listfs_foreach_node(ListFS *this, ListFS_BlockIndex node, bool (*callback)(ListFS*, ListFS_BlockIndex, ListFS_NodeHeader*, void*), void *data);
 void listfs_foreach_subnode(ListFS *this, ListFS_BlockIndex node, bool (*callback)(ListFS*, ListFS_BlockIndex, ListFS_NodeHeader*, void*), void *data);
-uint64_t listfs_search_node(ListFS *this, uint8_t *path, ListFS_BlockIndex first);
+ListFS_BlockIndex listfs_search_node(ListFS *this, uint8_t *path, ListFS_BlockIndex first);
 ListFS_NodeHeader *listfs_fetch_node(ListFS *this, ListFS_BlockIndex node);
 void listfs_rename_node(ListFS *this, ListFS_BlockIndex node, uint8_t *name);
 

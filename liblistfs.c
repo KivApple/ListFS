@@ -587,7 +587,7 @@ void listfs_file_truncate(ListFS_OpennedFile *this) {
 }
 
 size_t listfs_file_write(ListFS_OpennedFile *this, void *buffer, size_t length) {
-	if (!this) return;
+	if (!this) return 0;
 	listfs_log(this->fs, "[%s] length = %u\n", __func__, length);
 	size_t count = 0;
 	uint8_t *tmp = calloc(this->fs->header->block_size, 1);
@@ -622,7 +622,7 @@ size_t listfs_file_write(ListFS_OpennedFile *this, void *buffer, size_t length) 
 }
 
 size_t listfs_file_read(ListFS_OpennedFile *this, void *buffer, size_t length) {
-	if (!this) return;
+	if (!this) return 0;
 	listfs_log(this->fs, "[%s] length = %u\n", __func__, length);
 	size_t count = 0;
 	uint8_t *tmp = calloc(this->fs->header->block_size, 1);

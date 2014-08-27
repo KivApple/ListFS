@@ -189,18 +189,19 @@ static int _open(const char *path, struct fuse_file_info *fi) {
 
 static int _release(const char *path, struct fuse_file_info *fi) {
 	listfs_file_close((void*)fi->fh);
+	return 0;
 }
 
 static int _read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 	ListFS_OpennedFile *file = (void*)fi->fh;
 	listfs_file_seek(file, offset, false);
-	listfs_file_read(file, buf, size);
+	return listfs_file_read(file, buf, size);
 }
 
 static int _write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
 	ListFS_OpennedFile *file = (void*)fi->fh;
 	listfs_file_seek(file, offset, true);
-	listfs_file_write(file, (char*)buf, size);
+	return listfs_file_write(file, (char*)buf, size);
 }
 
 static int _truncate(const char *path, off_t size) {
