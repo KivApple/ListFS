@@ -17,11 +17,11 @@ struct _ListFS {
 
 typedef struct {
 	ListFS *fs;
-	uint64_t node;
+	ListFS_BlockIndex node;
 	ListFS_NodeHeader *node_header;
 	uint64_t cur_global_offset;
-	uint64_t cur_block_list_block;
-	uint64_t *cur_block_list;
+	ListFS_BlockIndex cur_block_list_block;
+	ListFS_BlockIndex *cur_block_list;
 	uint32_t cur_block;
 	uint32_t cur_offset;
 	uint32_t link_count;
