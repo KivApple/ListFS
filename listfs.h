@@ -10,18 +10,19 @@
 #define LISTFS_MIN_BLOCK_SIZE 512
 
 typedef uint64_t ListFS_BlockIndex;
+typedef uint64_t ListFS_BlockCount;
 
 typedef struct {
 	uint8_t jump[4];
 	uint32_t magic;
 	ListFS_BlockIndex base;
-	uint64_t size;
+	ListFS_BlockCount size;
 	ListFS_BlockIndex map_base;
-	uint64_t map_size;
+	ListFS_BlockCount map_size;
 	ListFS_BlockIndex root_dir;
 	uint16_t block_size;
 	uint16_t version;
-	uint64_t used_blocks;
+	ListFS_BlockCount used_blocks;
 } __attribute__((packed)) ListFS_Header;
 
 #define LISTFS_NODE_MAGIC 0x45444F4E

@@ -29,7 +29,7 @@
 #include "liblistfs.h"
 
 typedef struct {
-	uint64_t node;
+	ListFS_BlockIndex node;
 	ListFS_OpennedFile *file;
 } FileInfo;
 
@@ -658,7 +658,7 @@ ListFS *listfs_init(void (*read_block_func)(ListFS*, ListFS_BlockIndex, void*),
 	return this;
 }
 
-void listfs_create(ListFS *this, uint64_t size, uint16_t block_size, void *bootloader, size_t bootloader_size) {
+void listfs_create(ListFS *this, ListFS_BlockCount size, uint16_t block_size, void *bootloader, size_t bootloader_size) {
 	if (!this) return;
 	listfs_log(this, "[%s] size = %llu, block_size = %u, bootloader_size = %u\n", __func__, size, block_size, bootloader_size);
 	this->header = calloc(max(bootloader_size, block_size), 1);

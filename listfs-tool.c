@@ -323,8 +323,8 @@ int main(int argc, char *argv[]) {
 			display_usage();
 			return 0;
 		}
-		uint64_t fs_size = atol(argv[3]);
-		uint32_t fs_block_size = atoi(argv[4]);
+		ListFS_BlockCount fs_size = atol(argv[3]);
+		int fs_block_size = atoi(argv[4]);
 		if (fs_size < 2) {
 			printf("FS size too small!\n");
 			return -1;

@@ -24,12 +24,12 @@ typedef struct {
 	ListFS_BlockIndex *cur_block_list;
 	uint32_t cur_block;
 	uint32_t cur_offset;
-	uint32_t link_count;
+	unsigned int link_count;
 } ListFS_OpennedFile;
 
 ListFS *listfs_init(void (*read_block_func)(ListFS*, ListFS_BlockIndex, void*),
 	void (*write_block_func)(ListFS*, ListFS_BlockIndex, void*), void (*log_func)(ListFS*, char*, va_list));
-void listfs_create(ListFS *this, uint64_t size, uint16_t block_size, void *bootloader, size_t bootloader_size);
+void listfs_create(ListFS *this, ListFS_BlockCount size, uint16_t block_size, void *bootloader, size_t bootloader_size);
 bool listfs_open(ListFS *this);
 void listfs_close(ListFS *this);
 
